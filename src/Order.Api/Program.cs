@@ -3,6 +3,7 @@ using Order.Api.Data;
 using Order.Api.Endpoints;
 using Order.Api.Messaging;
 using Order.Api.Middleware;
+using Shared.Data.Abstractions;
 using Shared.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,7 @@ builder.Services.Configure<RabbitMqOptions>(
 );
 
 builder.Services.AddSingleton<RabbitMqInitializer>();
+builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
 builder.Services.AddSingleton<IOrderEventPublisher, RabbitMqOrderEventPublisher>();
 
 var app = builder.Build();

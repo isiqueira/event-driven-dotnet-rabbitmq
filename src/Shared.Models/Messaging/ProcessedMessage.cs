@@ -1,4 +1,4 @@
-namespace Inventory.Worker.Models;
+namespace Shared.Models.Messaging;
 
 public sealed class ProcessedMessage
 {

@@ -1,23 +1,20 @@
-using Inventory.Worker.Data;
-using Inventory.Worker.Models;
-using Microsoft.EntityFrameworkCore;
+using Shared.Data.Abstractions;
 using Shared.Events;
+using Shared.Models.Inventory;
 
 namespace Inventory.Worker.Services;
 
 public sealed class InventoryReservationService(
-    InventoryDbContext dbContext,
+    IInventoryRepository inventoryRepository,
     ILogger<InventoryReservationService> logger)
 {
     public async Task<IntegrationEvent> ReserveAsync(
         OrderCreatedEvent integrationEvent,
         CancellationToken cancellationToken = default)
     {
-        var existingReservation = await dbContext.InventoryReservations
-            .Include(reservation => reservation.Items)
-            .FirstOrDefaultAsync(
-                reservation => reservation.OrderId == integrationEvent.OrderId,
-                cancellationToken);
+        var existingReservation = await inventoryRepository.GetReservationByOrderIdAsync(
+            integrationEvent.OrderId,
+            cancellationToken);
 
         if (existingReservation is not null)
         {
@@ -41,11 +38,10 @@ public sealed class InventoryReservationService(
 
         foreach (var requestedItem in requestedItems)
         {
-            var inventoryItem = await dbContext.InventoryItems
-                .Where(item => item.Sku == requestedItem.Sku && item.AvailableQuantity >= requestedItem.Quantity)
-                .OrderBy(item => item.WarehouseId)
-                .ThenBy(item => item.LocationId)
-                .FirstOrDefaultAsync(cancellationToken);
+            var inventoryItem = await inventoryRepository.GetReservableItemAsync(
+                requestedItem.Sku,
+                requestedItem.Quantity,
+                cancellationToken);
 
             if (inventoryItem is null)
             {
@@ -55,8 +51,8 @@ public sealed class InventoryReservationService(
                     reason,
                     DateTimeOffset.UtcNow);
 
-                dbContext.InventoryReservations.Add(failedReservation);
-                await dbContext.SaveChangesAsync(cancellationToken);
+                await inventoryRepository.AddReservationAsync(failedReservation, cancellationToken);
+                await inventoryRepository.SaveChangesAsync(cancellationToken);
 
                 logger.LogWarning(
                     "Inventory reservation failed for order {OrderId}: {Reason}",
@@ -86,8 +82,8 @@ public sealed class InventoryReservationService(
             reservationItems,
             DateTimeOffset.UtcNow);
 
-        dbContext.InventoryReservations.Add(reservation);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await inventoryRepository.AddReservationAsync(reservation, cancellationToken);
+        await inventoryRepository.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Reserved inventory {ReservationId} for order {OrderId} with {ItemCount} item(s)",
@@ -102,12 +98,10 @@ public sealed class InventoryReservationService(
         OrderProcessedEvent integrationEvent,
         CancellationToken cancellationToken = default)
     {
-        var reservation = await dbContext.InventoryReservations
-            .Include(existingReservation => existingReservation.Items)
-            .FirstOrDefaultAsync(
-                existingReservation => existingReservation.Id == integrationEvent.ReservationId
-                                       && existingReservation.OrderId == integrationEvent.OrderId,
-                cancellationToken);
+        var reservation = await inventoryRepository.GetReservationForOrderAsync(
+            integrationEvent.ReservationId,
+            integrationEvent.OrderId,
+            cancellationToken);
 
         if (reservation is null)
         {
@@ -132,10 +126,10 @@ public sealed class InventoryReservationService(
 
         foreach (var reservationItem in reservation.Items)
         {
-            var inventoryItem = await dbContext.InventoryItems.FirstOrDefaultAsync(
-                item => item.Sku == reservationItem.Sku
-                        && item.WarehouseId == reservationItem.WarehouseId
-                        && item.LocationId == reservationItem.LocationId,
+            var inventoryItem = await inventoryRepository.GetItemAtLocationAsync(
+                reservationItem.Sku,
+                reservationItem.WarehouseId,
+                reservationItem.LocationId,
                 cancellationToken);
 
             if (inventoryItem is null)
@@ -148,7 +142,7 @@ public sealed class InventoryReservationService(
         }
 
         reservation.MarkDeducted(DateTimeOffset.UtcNow);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await inventoryRepository.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Deducted reserved inventory for reservation {ReservationId} and order {OrderId}",

@@ -4,6 +4,8 @@
     <Project Path="src/Order.Api/Order.Api.csproj" />
     <Project Path="src/Order.Worker/Order.Worker.csproj" />
     <Project Path="src/Shared/Shared.csproj" />
+    <Project Path="src/Shared.Data/Shared.Data.csproj" />
+    <Project Path="src/Shared.Models/Shared.Models.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Inventory.Worker.Tests/Inventory.Worker.Tests.csproj" />

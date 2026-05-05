@@ -1,6 +1,6 @@
-namespace Order.Worker.Models;
+namespace Shared.Models.Orders;
 
-public enum OrderWorkflowStatus
+public enum OrderStatus
 {
     Created,
     PendingInventoryReservation,

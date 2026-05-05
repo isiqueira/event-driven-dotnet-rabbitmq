@@ -3,11 +3,12 @@ using Order.Worker;
 using Order.Worker.Data;
 using Order.Worker.Messaging;
 using Order.Worker.Services;
+using Shared.Data.Abstractions;
 using Shared.Messaging;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.AddDbContext<WorkerDbContext>(options =>
+builder.Services.AddDbContext<OrderWorkerDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("WorkerDb"),
         npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_worker")));
@@ -20,6 +21,8 @@ builder.Services.Configure<RabbitMqOptions>(
 );
 
 builder.Services.AddScoped<ProcessedMessageStore>();
+builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
+builder.Services.AddScoped<IProcessedMessageRepository, EfProcessedMessageRepository>();
 builder.Services.AddScoped<OrderProcessingService>();
 builder.Services.AddScoped<OrderWorkflowService>();
 builder.Services.AddScoped<InventoryReservedMessageHandler>();

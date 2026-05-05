@@ -1,4 +1,5 @@
-using OrderEntity = Order.Api.Domain.Order;
+using Shared.Models.Orders;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Api.Contracts;
 
@@ -33,7 +34,7 @@ public sealed record OrderItemResponse(
     decimal UnitPrice,
     decimal TotalPrice)
 {
-    public static OrderItemResponse From(Domain.OrderItem item)
+    public static OrderItemResponse From(OrderItem item)
     {
         return new OrderItemResponse(
             item.Id,

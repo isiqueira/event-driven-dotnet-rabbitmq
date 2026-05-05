@@ -1,10 +1,10 @@
-using Order.Worker.Models;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Worker.Services;
 
 public sealed class OrderProcessingService(ILogger<OrderProcessingService> logger)
 {
-    public Task ProcessAsync(OrderWorkflowOrder order, CancellationToken cancellationToken = default)
+    public Task ProcessAsync(OrderEntity order, CancellationToken cancellationToken = default)
     {
         logger.LogInformation(
             "Processing order {OrderId} for customer {CustomerId}",

@@ -1,9 +1,9 @@
 using Inventory.Worker.Data;
-using Inventory.Worker.Models;
 using Inventory.Worker.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shared.Events;
+using Shared.Models.Inventory;
 
 namespace Inventory.Worker.Tests;
 
@@ -108,7 +108,7 @@ public sealed class InventoryReservationServiceTests
 
         var publisher = new RecordingInventoryEventPublisher();
         var handler = new OrderCreatedMessageHandler(
-            new ProcessedMessageStore(dbContext),
+            new ProcessedMessageStore(new EfProcessedMessageRepository(dbContext)),
             CreateService(dbContext),
             publisher,
             NullLogger<OrderCreatedMessageHandler>.Instance);
@@ -127,7 +127,7 @@ public sealed class InventoryReservationServiceTests
     private static InventoryReservationService CreateService(InventoryDbContext dbContext)
     {
         return new InventoryReservationService(
-            dbContext,
+            new EfInventoryRepository(dbContext),
             NullLogger<InventoryReservationService>.Instance);
     }
 

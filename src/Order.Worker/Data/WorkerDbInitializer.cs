@@ -9,7 +9,7 @@ public static class WorkerDbInitializer
         CancellationToken cancellationToken = default)
     {
         using var scope = services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<WorkerDbContext>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrderWorkerDbContext>();
         await dbContext.Database.MigrateAsync(cancellationToken);
     }
 }

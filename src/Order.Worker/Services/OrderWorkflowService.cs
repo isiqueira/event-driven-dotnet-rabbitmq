@@ -1,12 +1,12 @@
-using Microsoft.EntityFrameworkCore;
-using Order.Worker.Data;
-using Order.Worker.Models;
+using Shared.Data.Abstractions;
 using Shared.Events;
+using Shared.Models.Orders;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Worker.Services;
 
 public sealed class OrderWorkflowService(
-    OrderWorkflowDbContext dbContext,
+    IOrderRepository orderRepository,
     OrderProcessingService orderProcessingService,
     ILogger<OrderWorkflowService> logger)
 {
@@ -16,7 +16,7 @@ public sealed class OrderWorkflowService(
     {
         var order = await GetOrderAsync(integrationEvent.OrderId, cancellationToken);
 
-        if (order.Status == OrderWorkflowStatus.Fulfilled)
+        if (order.Status == OrderStatus.Fulfilled)
         {
             logger.LogInformation(
                 "Order {OrderId} is already fulfilled; re-emitting deterministic {EventType}",
@@ -26,13 +26,13 @@ public sealed class OrderWorkflowService(
             return CreateOrderProcessedEvent(integrationEvent);
         }
 
-        if (order.Status != OrderWorkflowStatus.Processed)
+        if (order.Status != OrderStatus.Processed)
         {
             order.MarkInventoryReserved(DateTimeOffset.UtcNow);
-            order.MarkProcessing(DateTimeOffset.UtcNow);
+            order.MarkAsProcessing(DateTimeOffset.UtcNow);
             await orderProcessingService.ProcessAsync(order, cancellationToken);
-            order.MarkProcessed(DateTimeOffset.UtcNow);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            order.MarkAsProcessed(DateTimeOffset.UtcNow);
+            await orderRepository.SaveChangesAsync(cancellationToken);
         }
 
         return CreateOrderProcessedEvent(integrationEvent);
@@ -44,10 +44,10 @@ public sealed class OrderWorkflowService(
     {
         var order = await GetOrderAsync(integrationEvent.OrderId, cancellationToken);
 
-        if (order.Status != OrderWorkflowStatus.Fulfilled)
+        if (order.Status != OrderStatus.Fulfilled)
         {
-            order.MarkFulfilled(DateTimeOffset.UtcNow);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            order.MarkAsFulfilled(DateTimeOffset.UtcNow);
+            await orderRepository.SaveChangesAsync(cancellationToken);
         }
 
         return new OrderFulfilledEvent(
@@ -64,17 +64,18 @@ public sealed class OrderWorkflowService(
         CancellationToken cancellationToken = default)
     {
         var order = await GetOrderAsync(integrationEvent.OrderId, cancellationToken);
-        order.MarkFailed(DateTimeOffset.UtcNow);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (order.Status != OrderStatus.Fulfilled)
+        {
+            order.MarkAsFailed(DateTimeOffset.UtcNow);
+            await orderRepository.SaveChangesAsync(cancellationToken);
+        }
     }
 
-    private async Task<OrderWorkflowOrder> GetOrderAsync(
+    private async Task<OrderEntity> GetOrderAsync(
         Guid orderId,
         CancellationToken cancellationToken)
     {
-        return await dbContext.Orders
-            .Include(order => order.Items)
-            .FirstOrDefaultAsync(order => order.Id == orderId, cancellationToken)
+        return await orderRepository.GetByIdAsync(orderId, cancellationToken)
             ?? throw new InvalidOperationException($"Order '{orderId}' was not found.");
     }
 

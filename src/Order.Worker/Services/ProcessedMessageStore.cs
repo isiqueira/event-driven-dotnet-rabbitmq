@@ -1,11 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using Order.Worker.Data;
-using Order.Worker.Models;
+using Shared.Data.Abstractions;
 using Shared.Events;
+using Shared.Models.Messaging;
 
 namespace Order.Worker.Services;
 
-public sealed class ProcessedMessageStore(WorkerDbContext dbContext)
+public sealed class ProcessedMessageStore(IProcessedMessageRepository processedMessageRepository)
 {
     public Task<bool> HasProcessedAsync(
         Guid eventId,
@@ -13,11 +12,7 @@ public sealed class ProcessedMessageStore(WorkerDbContext dbContext)
         string consumer,
         CancellationToken cancellationToken = default)
     {
-        return dbContext.ProcessedMessages.AnyAsync(
-            message => message.EventId == eventId
-                       && message.EventType == eventType
-                       && message.Consumer == consumer,
-            cancellationToken);
+        return processedMessageRepository.HasBeenProcessedAsync(eventId, consumer, cancellationToken);
     }
 
     public async Task MarkProcessedAsync(
@@ -25,13 +20,14 @@ public sealed class ProcessedMessageStore(WorkerDbContext dbContext)
         string consumer,
         CancellationToken cancellationToken = default)
     {
-        dbContext.ProcessedMessages.Add(new ProcessedMessage(
+        await processedMessageRepository.MarkAsProcessedAsync(new ProcessedMessage(
             integrationEvent.EventId,
             integrationEvent.EventType,
             consumer,
             DateTimeOffset.UtcNow,
-            integrationEvent.CorrelationId));
+            integrationEvent.CorrelationId),
+            cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await processedMessageRepository.SaveChangesAsync(cancellationToken);
     }
 }

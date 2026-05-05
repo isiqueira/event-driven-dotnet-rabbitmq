@@ -1,4 +1,4 @@
-namespace Order.Api.Domain;
+namespace Shared.Models.Orders;
 
 public sealed class OrderItem
 {
@@ -25,9 +25,24 @@ public sealed class OrderItem
             throw new ArgumentOutOfRangeException(nameof(unitPrice), "Unit price must be greater than zero.");
         }
 
+        return Restore(Guid.NewGuid(), orderId, sku, quantity, unitPrice);
+    }
+
+    public static OrderItem Restore(Guid id, Guid orderId, string sku, int quantity, decimal unitPrice)
+    {
+        if (quantity <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be greater than zero.");
+        }
+
+        if (unitPrice <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(unitPrice), "Unit price must be greater than zero.");
+        }
+
         return new OrderItem
         {
-            Id = Guid.NewGuid(),
+            Id = id,
             OrderId = orderId,
             Sku = sku.Trim(),
             Quantity = quantity,

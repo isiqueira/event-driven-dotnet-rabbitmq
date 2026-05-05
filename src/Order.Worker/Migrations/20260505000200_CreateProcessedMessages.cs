@@ -6,7 +6,7 @@ using Order.Worker.Data;
 
 namespace Order.Worker.Migrations;
 
-[DbContext(typeof(WorkerDbContext))]
+[DbContext(typeof(OrderWorkerDbContext))]
 [Migration("20260505000200_CreateProcessedMessages")]
 public partial class CreateProcessedMessages : Migration
 {

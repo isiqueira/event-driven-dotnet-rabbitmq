@@ -1,5 +1,5 @@
-using Inventory.Worker.Models;
 using Microsoft.EntityFrameworkCore;
+using Shared.Models.Inventory;
 
 namespace Inventory.Worker.Data;
 

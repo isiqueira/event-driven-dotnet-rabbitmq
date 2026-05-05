@@ -1,4 +1,4 @@
-namespace Order.Api.Domain;
+namespace Shared.Models.Orders;
 
 public sealed class Order
 {
@@ -41,6 +41,29 @@ public sealed class Order
         return order;
     }
 
+    public static Order Restore(
+        Guid id,
+        string customerId,
+        decimal totalAmount,
+        OrderStatus status,
+        DateTimeOffset createdAt,
+        IEnumerable<OrderItem> items,
+        DateTimeOffset? updatedAt = null)
+    {
+        var order = new Order
+        {
+            Id = id,
+            CustomerId = customerId.Trim(),
+            TotalAmount = totalAmount,
+            Status = status,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        };
+
+        order.Items.AddRange(items);
+        return order;
+    }
+
     public void MarkAsProcessing(DateTimeOffset updatedAt)
     {
         Status = OrderStatus.Processing;
@@ -68,6 +91,12 @@ public sealed class Order
     public void MarkAsFailed(DateTimeOffset updatedAt)
     {
         Status = OrderStatus.Failed;
+        UpdatedAt = updatedAt;
+    }
+
+    public void UpdateStatus(OrderStatus status, DateTimeOffset updatedAt)
+    {
+        Status = status;
         UpdatedAt = updatedAt;
     }
 }

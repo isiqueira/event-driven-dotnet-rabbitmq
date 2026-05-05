@@ -11,7 +11,7 @@ public sealed class ProcessedMessageStoreTests
     public async Task HasProcessedAsync_returns_true_after_message_is_marked_processed()
     {
         await using var dbContext = CreateDbContext();
-        var store = new ProcessedMessageStore(dbContext);
+        var store = new ProcessedMessageStore(new EfProcessedMessageRepository(dbContext));
         var integrationEvent = new OrderCreatedEvent(
             Guid.NewGuid(),
             OrderCreatedEvent.Name,
@@ -39,12 +39,12 @@ public sealed class ProcessedMessageStoreTests
         Assert.True(after);
     }
 
-    private static WorkerDbContext CreateDbContext()
+    private static OrderWorkerDbContext CreateDbContext()
     {
-        var options = new DbContextOptionsBuilder<WorkerDbContext>()
+        var options = new DbContextOptionsBuilder<OrderWorkerDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("D"))
             .Options;
 
-        return new WorkerDbContext(options);
+        return new OrderWorkerDbContext(options);
     }
 }

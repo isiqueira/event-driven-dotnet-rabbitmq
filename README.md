@@ -120,9 +120,17 @@ processed_messages
 | `src/Inventory.Worker` | Background worker that reserves and deducts inventory |
 | `src/Order.Worker` | Background worker that reacts to inventory events and advances order status |
 | `src/Shared` | Shared event and messaging contracts |
+| `src/Shared.Models` | Shared sample domain models |
+| `src/Shared.Data` | Reusable EF Core entity configuration |
 | `tests/Inventory.Worker.Tests` | Unit tests for inventory reservation and deduction behavior |
 | `tests/Order.Api.Tests` | Unit tests for API domain and validation behavior |
 | `tests/Order.Worker.Tests` | Unit tests for order workflow and idempotency behavior |
+
+`Shared.Models`, `Shared.Data`, and the specific repository abstractions keep
+this educational sample small and readable. In a strict microservices
+architecture, each service should own its domain model and persistence schema
+independently. This repository is a modular event-driven architecture sample,
+not a strict microservices template.
 
 ## Run Locally
 

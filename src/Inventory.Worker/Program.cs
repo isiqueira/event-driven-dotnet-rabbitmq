@@ -3,6 +3,7 @@ using Inventory.Worker.Data;
 using Inventory.Worker.Messaging;
 using Inventory.Worker.Services;
 using Microsoft.EntityFrameworkCore;
+using Shared.Data.Abstractions;
 using Shared.Messaging;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -17,6 +18,8 @@ builder.Services.Configure<RabbitMqOptions>(
 );
 
 builder.Services.AddScoped<ProcessedMessageStore>();
+builder.Services.AddScoped<IInventoryRepository, EfInventoryRepository>();
+builder.Services.AddScoped<IProcessedMessageRepository, EfProcessedMessageRepository>();
 builder.Services.AddScoped<InventoryReservationService>();
 builder.Services.AddScoped<OrderCreatedMessageHandler>();
 builder.Services.AddScoped<OrderProcessedMessageHandler>();

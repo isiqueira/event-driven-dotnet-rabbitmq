@@ -1,12 +1,11 @@
-using Microsoft.EntityFrameworkCore;
 using Order.Api.Contracts;
-using Order.Api.Data;
-using Order.Api.Domain;
 using Order.Api.Messaging;
 using Order.Api.Middleware;
 using Order.Api.Services;
+using Shared.Data.Abstractions;
 using Shared.Events;
-using OrderEntity = Order.Api.Domain.Order;
+using Shared.Models.Orders;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Api.Endpoints;
 
@@ -36,7 +35,7 @@ public static class OrderEndpoints
     private static async Task<IResult> CreateOrderAsync(
         CreateOrderRequest? request,
         HttpContext httpContext,
-        OrdersDbContext dbContext,
+        IOrderRepository orderRepository,
         IOrderEventPublisher eventPublisher,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
@@ -53,8 +52,8 @@ public static class OrderEndpoints
             .ToArray();
 
         var order = OrderEntity.Create(request.CustomerId!, items, DateTimeOffset.UtcNow);
-        dbContext.Orders.Add(order);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await orderRepository.AddAsync(order, cancellationToken);
+        await orderRepository.SaveChangesAsync(cancellationToken);
 
         var correlationId = CorrelationIdMiddleware.GetCorrelationId(httpContext);
         var integrationEvent = new OrderCreatedEvent(
@@ -82,27 +81,20 @@ public static class OrderEndpoints
     }
 
     private static async Task<IResult> GetOrdersAsync(
-        OrdersDbContext dbContext,
+        IOrderRepository orderRepository,
         CancellationToken cancellationToken)
     {
-        var orders = await dbContext.Orders
-            .AsNoTracking()
-            .Include(order => order.Items)
-            .OrderByDescending(order => order.CreatedAt)
-            .ToListAsync(cancellationToken);
+        var orders = await orderRepository.ListAsync(cancellationToken);
 
         return Results.Ok(orders.Select(order => OrderResponse.From(order)).ToArray());
     }
 
     private static async Task<IResult> GetOrderByIdAsync(
         Guid id,
-        OrdersDbContext dbContext,
+        IOrderRepository orderRepository,
         CancellationToken cancellationToken)
     {
-        var order = await dbContext.Orders
-            .AsNoTracking()
-            .Include(existingOrder => existingOrder.Items)
-            .FirstOrDefaultAsync(existingOrder => existingOrder.Id == id, cancellationToken);
+        var order = await orderRepository.GetByIdAsync(id, cancellationToken);
 
         return order is null
             ? Results.NotFound()

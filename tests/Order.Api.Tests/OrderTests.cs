@@ -1,5 +1,5 @@
-using Order.Api.Domain;
-using OrderEntity = Order.Api.Domain.Order;
+using Shared.Models.Orders;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Api.Tests;
 

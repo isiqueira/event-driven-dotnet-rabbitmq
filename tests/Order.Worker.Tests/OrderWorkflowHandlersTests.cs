@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Order.Worker.Data;
-using Order.Worker.Models;
 using Order.Worker.Services;
 using Shared.Events;
+using Shared.Models.Orders;
+using OrderEntity = Shared.Models.Orders.Order;
 
 namespace Order.Worker.Tests;
 
@@ -16,14 +17,14 @@ public sealed class OrderWorkflowHandlersTests
         var reservationId = Guid.NewGuid();
         await using var workerDbContext = CreateWorkerDbContext();
         await using var orderDbContext = CreateOrderWorkflowDbContext();
-        orderDbContext.Orders.Add(CreateOrder(orderId, OrderWorkflowStatus.PendingInventoryReservation));
+        orderDbContext.Orders.Add(CreateOrder(orderId, OrderStatus.PendingInventoryReservation));
         await orderDbContext.SaveChangesAsync();
 
         var publisher = new RecordingOrderWorkflowEventPublisher();
         var handler = new InventoryReservedMessageHandler(
-            new ProcessedMessageStore(workerDbContext),
+            new ProcessedMessageStore(new EfProcessedMessageRepository(workerDbContext)),
             new OrderWorkflowService(
-                orderDbContext,
+                new EfOrderRepository(orderDbContext),
                 new OrderProcessingService(NullLogger<OrderProcessingService>.Instance),
                 NullLogger<OrderWorkflowService>.Instance),
             publisher,
@@ -41,7 +42,7 @@ public sealed class OrderWorkflowHandlersTests
         var order = await orderDbContext.Orders.SingleAsync(existingOrder => existingOrder.Id == orderId);
         var publishedEvent = Assert.IsType<OrderProcessedEvent>(Assert.Single(publisher.Events));
 
-        Assert.Equal(OrderWorkflowStatus.Processed, order.Status);
+        Assert.Equal(OrderStatus.Processed, order.Status);
         Assert.Equal(orderId, publishedEvent.OrderId);
         Assert.Equal(reservationId, publishedEvent.ReservationId);
     }
@@ -53,14 +54,14 @@ public sealed class OrderWorkflowHandlersTests
         var reservationId = Guid.NewGuid();
         await using var workerDbContext = CreateWorkerDbContext();
         await using var orderDbContext = CreateOrderWorkflowDbContext();
-        orderDbContext.Orders.Add(CreateOrder(orderId, OrderWorkflowStatus.Processed));
+        orderDbContext.Orders.Add(CreateOrder(orderId, OrderStatus.Processed));
         await orderDbContext.SaveChangesAsync();
 
         var publisher = new RecordingOrderWorkflowEventPublisher();
         var handler = new InventoryDeductedMessageHandler(
-            new ProcessedMessageStore(workerDbContext),
+            new ProcessedMessageStore(new EfProcessedMessageRepository(workerDbContext)),
             new OrderWorkflowService(
-                orderDbContext,
+                new EfOrderRepository(orderDbContext),
                 new OrderProcessingService(NullLogger<OrderProcessingService>.Instance),
                 NullLogger<OrderWorkflowService>.Instance),
             publisher,
@@ -78,29 +79,29 @@ public sealed class OrderWorkflowHandlersTests
         var order = await orderDbContext.Orders.SingleAsync(existingOrder => existingOrder.Id == orderId);
         var publishedEvent = Assert.IsType<OrderFulfilledEvent>(Assert.Single(publisher.Events));
 
-        Assert.Equal(OrderWorkflowStatus.Fulfilled, order.Status);
+        Assert.Equal(OrderStatus.Fulfilled, order.Status);
         Assert.Equal(orderId, publishedEvent.OrderId);
         Assert.Equal(reservationId, publishedEvent.ReservationId);
     }
 
-    private static OrderWorkflowOrder CreateOrder(Guid orderId, OrderWorkflowStatus status)
+    private static OrderEntity CreateOrder(Guid orderId, OrderStatus status)
     {
-        return OrderWorkflowOrder.Create(
+        return OrderEntity.Restore(
             orderId,
             "customer-001",
             200m,
             status,
             DateTimeOffset.UtcNow,
-            [new OrderWorkflowOrderItem(Guid.NewGuid(), orderId, "SKU-001", 2, 100m)]);
+            [OrderItem.Restore(Guid.NewGuid(), orderId, "SKU-001", 2, 100m)]);
     }
 
-    private static WorkerDbContext CreateWorkerDbContext()
+    private static OrderWorkerDbContext CreateWorkerDbContext()
     {
-        var options = new DbContextOptionsBuilder<WorkerDbContext>()
+        var options = new DbContextOptionsBuilder<OrderWorkerDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString("D"))
             .Options;
 
-        return new WorkerDbContext(options);
+        return new OrderWorkerDbContext(options);
     }
 
     private static OrderWorkflowDbContext CreateOrderWorkflowDbContext()
