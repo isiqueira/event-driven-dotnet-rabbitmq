@@ -1,12 +1,15 @@
 # Event-driven .NET with RabbitMQ
 
-Event-driven architecture sample using .NET 10, RabbitMQ, PostgreSQL, retries, dead-letter queue, idempotency and correlation IDs.
+Event-driven architecture sample using .NET 10, RabbitMQ, PostgreSQL, retries,
+dead-letter queues, idempotency, and correlation IDs.
 
-This repository demonstrates how to build a small but production-inspired backend architecture using asynchronous messaging between an API and a background worker.
+This repository demonstrates a small, production-inspired backend architecture
+using asynchronous messaging between an API and a background worker.
 
 ## Purpose
 
-The goal of this project is to demonstrate practical event-driven architecture patterns commonly used in enterprise systems.
+The goal of this project is to demonstrate practical event-driven architecture
+patterns commonly used in backend and enterprise systems.
 
 It focuses on:
 
@@ -17,19 +20,35 @@ It focuses on:
 - Correlation IDs
 - Idempotent consumers
 - Retry handling
-- Dead-letter queue
-- Dockerized local environment
+- Dead-letter queues
+- Dockerized local infrastructure
 - Clear architecture documentation
 
-## Business scenario
+## Technology Stack
+
+| Area | Technology |
+| --- | --- |
+| Runtime | .NET 10 |
+| API | ASP.NET Core minimal APIs |
+| Worker | .NET Worker Service |
+| Messaging | RabbitMQ |
+| Persistence | PostgreSQL with EF Core |
+| Tests | xUnit |
+| Local infrastructure | Docker Compose |
+
+## Business Scenario
 
 The sample domain is order processing.
 
-When a new order is created, the API stores it in PostgreSQL and publishes an `OrderCreated` event to RabbitMQ. A worker consumes this event asynchronously and processes it.
+When a new order is created, the API stores it in PostgreSQL and publishes an
+`OrderCreated` event to RabbitMQ.
 
-This simple flow is enough to demonstrate real-world messaging concerns such as duplicate messages, retries, failures and observability.
+A worker consumes this event asynchronously and processes it.
 
-## Architecture overview
+This simple flow is enough to demonstrate real-world messaging concerns such as
+duplicate messages, retries, failures, and observability.
+
+## Architecture Overview
 
 ```text
 Client
@@ -56,7 +75,17 @@ Order.Worker
 processed_messages
 ```
 
-## Run locally
+## Projects
+
+| Project | Description |
+| --- | --- |
+| `src/Order.Api` | HTTP API that receives orders and publishes integration events |
+| `src/Order.Worker` | Background worker that consumes order events |
+| `src/Shared` | Shared event and messaging contracts |
+| `tests/Order.Api.Tests` | Unit tests for API domain and validation behavior |
+| `tests/Order.Worker.Tests` | Unit tests for worker idempotency behavior |
+
+## Run Locally
 
 Start infrastructure:
 
@@ -87,12 +116,27 @@ curl -X POST http://localhost:5282/orders \
 
 Useful local URLs:
 
-- API Swagger UI: `http://localhost:5282/swagger`
-- RabbitMQ management: `http://localhost:15672` (`app` / `app`)
+| Service | URL | Credentials |
+| --- | --- | --- |
+| API Swagger UI | `http://localhost:5282/swagger` | Not required |
+| RabbitMQ management | `http://localhost:15672` | `app` / `app` |
 
-## Tests
+## Validation
+
+Build the solution:
 
 ```bash
 dotnet build
+```
+
+Run the tests:
+
+```bash
 dotnet test
+```
+
+Validate Docker Compose:
+
+```bash
+docker compose config
 ```
