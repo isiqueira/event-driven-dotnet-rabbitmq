@@ -17,7 +17,7 @@ public sealed class OrderTests
             },
             DateTimeOffset.UtcNow);
 
-        Assert.Equal(OrderStatus.Created, order.Status);
+        Assert.Equal(OrderStatus.PendingInventoryReservation, order.Status);
         Assert.Equal(250m, order.TotalAmount);
         Assert.Equal(200m, order.Items.Single(item => item.Sku == "SKU-001").TotalPrice);
         Assert.Equal(50m, order.Items.Single(item => item.Sku == "SKU-002").TotalPrice);

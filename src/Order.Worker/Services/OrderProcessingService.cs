@@ -1,22 +1,21 @@
-using Shared.Events;
+using Order.Worker.Models;
 
 namespace Order.Worker.Services;
 
 public sealed class OrderProcessingService(ILogger<OrderProcessingService> logger)
 {
-    public async Task ProcessAsync(OrderCreatedEvent integrationEvent, CancellationToken cancellationToken = default)
+    public Task ProcessAsync(OrderWorkflowOrder order, CancellationToken cancellationToken = default)
     {
         logger.LogInformation(
-            "Processing order {OrderId} for customer {CustomerId} with correlation ID {CorrelationId}",
-            integrationEvent.OrderId,
-            integrationEvent.CustomerId,
-            integrationEvent.CorrelationId);
+            "Processing order {OrderId} for customer {CustomerId}",
+            order.Id,
+            order.CustomerId);
 
-        if (string.Equals(integrationEvent.CustomerId, "fail-processing", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(order.CustomerId, "fail-processing", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Simulated order processing failure.");
         }
 
-        await Task.Delay(500, cancellationToken);
+        return Task.CompletedTask;
     }
 }

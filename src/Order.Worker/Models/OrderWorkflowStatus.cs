@@ -1,6 +1,6 @@
-namespace Order.Api.Domain;
+namespace Order.Worker.Models;
 
-public enum OrderStatus
+public enum OrderWorkflowStatus
 {
     Created,
     PendingInventoryReservation,

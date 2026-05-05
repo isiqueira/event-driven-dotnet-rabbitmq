@@ -19,19 +19,21 @@ public sealed class ProcessedMessageStoreTests
             "correlation-001",
             Guid.NewGuid(),
             "customer-001",
-            100m);
+            100m,
+            [new OrderCreatedItem("SKU-001", 1)]);
+        const string consumerName = "test-consumer";
 
         var before = await store.HasProcessedAsync(
             integrationEvent.EventId,
             integrationEvent.EventType,
-            OrderCreatedMessageHandler.ConsumerName);
+            consumerName);
 
-        await store.MarkProcessedAsync(integrationEvent, OrderCreatedMessageHandler.ConsumerName);
+        await store.MarkProcessedAsync(integrationEvent, consumerName);
 
         var after = await store.HasProcessedAsync(
             integrationEvent.EventId,
             integrationEvent.EventType,
-            OrderCreatedMessageHandler.ConsumerName);
+            consumerName);
 
         Assert.False(before);
         Assert.True(after);

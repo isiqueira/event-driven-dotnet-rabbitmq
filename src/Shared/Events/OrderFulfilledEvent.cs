@@ -1,15 +1,13 @@
 namespace Shared.Events;
 
-public sealed record OrderCreatedEvent(
+public sealed record OrderFulfilledEvent(
     Guid EventId,
     string EventType,
     DateTimeOffset OccurredAt,
     string CorrelationId,
     Guid OrderId,
-    string CustomerId,
-    decimal TotalAmount,
-    OrderCreatedItem[] Items)
+    Guid ReservationId)
     : IntegrationEvent(EventId, EventType, OccurredAt, CorrelationId)
 {
-    public const string Name = "OrderCreated";
+    public const string Name = "OrderFulfilled";
 }

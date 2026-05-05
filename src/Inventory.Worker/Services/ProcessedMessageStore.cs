@@ -1,11 +1,11 @@
+using Inventory.Worker.Data;
+using Inventory.Worker.Models;
 using Microsoft.EntityFrameworkCore;
-using Order.Worker.Data;
-using Order.Worker.Models;
 using Shared.Events;
 
-namespace Order.Worker.Services;
+namespace Inventory.Worker.Services;
 
-public sealed class ProcessedMessageStore(WorkerDbContext dbContext)
+public sealed class ProcessedMessageStore(InventoryDbContext dbContext)
 {
     public Task<bool> HasProcessedAsync(
         Guid eventId,

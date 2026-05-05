@@ -64,7 +64,10 @@ public static class OrderEndpoints
             correlationId,
             order.Id,
             order.CustomerId,
-            order.TotalAmount);
+            order.TotalAmount,
+            order.Items
+                .Select(item => new OrderCreatedItem(item.Sku, item.Quantity))
+                .ToArray());
 
         await eventPublisher.PublishAsync(integrationEvent, cancellationToken);
 

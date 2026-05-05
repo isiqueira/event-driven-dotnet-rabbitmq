@@ -23,7 +23,7 @@ public sealed class Order
         {
             Id = Guid.NewGuid(),
             CustomerId = customerId.Trim(),
-            Status = OrderStatus.Created,
+            Status = OrderStatus.PendingInventoryReservation,
             CreatedAt = createdAt
         };
 
@@ -47,9 +47,21 @@ public sealed class Order
         UpdatedAt = updatedAt;
     }
 
+    public void MarkInventoryReserved(DateTimeOffset updatedAt)
+    {
+        Status = OrderStatus.InventoryReserved;
+        UpdatedAt = updatedAt;
+    }
+
     public void MarkAsProcessed(DateTimeOffset updatedAt)
     {
         Status = OrderStatus.Processed;
+        UpdatedAt = updatedAt;
+    }
+
+    public void MarkAsFulfilled(DateTimeOffset updatedAt)
+    {
+        Status = OrderStatus.Fulfilled;
         UpdatedAt = updatedAt;
     }
 

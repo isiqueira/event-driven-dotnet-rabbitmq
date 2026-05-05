@@ -16,8 +16,20 @@ public static class RabbitMqTopology
             autoDelete: false,
             cancellationToken: cancellationToken);
 
+        foreach (var endpoint in RabbitMqEventRouting.GetAllEndpoints(options))
+        {
+            await DeclareEndpointAsync(channel, options, endpoint, cancellationToken);
+        }
+    }
+
+    private static async Task DeclareEndpointAsync(
+        IChannel channel,
+        RabbitMqOptions options,
+        RabbitMqEventEndpoint endpoint,
+        CancellationToken cancellationToken)
+    {
         await channel.QueueDeclareAsync(
-            queue: options.OrderCreatedQueue,
+            queue: endpoint.Queue,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -25,7 +37,7 @@ public static class RabbitMqTopology
             cancellationToken: cancellationToken);
 
         await channel.QueueDeclareAsync(
-            queue: options.OrderCreatedRetryQueue,
+            queue: endpoint.RetryQueue,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -33,12 +45,12 @@ public static class RabbitMqTopology
             {
                 ["x-message-ttl"] = options.RetryDelayMilliseconds,
                 ["x-dead-letter-exchange"] = options.ExchangeName,
-                ["x-dead-letter-routing-key"] = options.OrderCreatedRoutingKey
+                ["x-dead-letter-routing-key"] = endpoint.RoutingKey
             },
             cancellationToken: cancellationToken);
 
         await channel.QueueDeclareAsync(
-            queue: options.OrderCreatedDeadLetterQueue,
+            queue: endpoint.DeadLetterQueue,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -46,21 +58,21 @@ public static class RabbitMqTopology
             cancellationToken: cancellationToken);
 
         await channel.QueueBindAsync(
-            queue: options.OrderCreatedQueue,
+            queue: endpoint.Queue,
             exchange: options.ExchangeName,
-            routingKey: options.OrderCreatedRoutingKey,
+            routingKey: endpoint.RoutingKey,
             cancellationToken: cancellationToken);
 
         await channel.QueueBindAsync(
-            queue: options.OrderCreatedRetryQueue,
+            queue: endpoint.RetryQueue,
             exchange: options.ExchangeName,
-            routingKey: options.OrderCreatedRetryRoutingKey,
+            routingKey: endpoint.RetryRoutingKey,
             cancellationToken: cancellationToken);
 
         await channel.QueueBindAsync(
-            queue: options.OrderCreatedDeadLetterQueue,
+            queue: endpoint.DeadLetterQueue,
             exchange: options.ExchangeName,
-            routingKey: options.OrderCreatedDeadLetterRoutingKey,
+            routingKey: endpoint.DeadLetterRoutingKey,
             cancellationToken: cancellationToken);
     }
 }

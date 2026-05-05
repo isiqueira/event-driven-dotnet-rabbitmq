@@ -4,7 +4,8 @@ Event-driven architecture sample using .NET 10, RabbitMQ, PostgreSQL, retries,
 dead-letter queues, idempotency, and correlation IDs.
 
 This repository demonstrates a small, production-inspired backend architecture
-using asynchronous messaging between an API and a background worker.
+using asynchronous messaging between an API, an order worker, and an inventory
+worker.
 
 ## Purpose
 
@@ -19,6 +20,7 @@ It focuses on:
 - Integration events
 - Correlation IDs
 - Idempotent consumers
+- Inventory reservation and deduction
 - Retry handling
 - Dead-letter queues
 - Dockerized local infrastructure
@@ -30,7 +32,7 @@ It focuses on:
 | --- | --- |
 | Runtime | .NET 10 |
 | API | ASP.NET Core minimal APIs |
-| Worker | .NET Worker Service |
+| Workers | .NET Worker Service |
 | Messaging | RabbitMQ |
 | Persistence | PostgreSQL with EF Core |
 | Tests | xUnit |
@@ -38,12 +40,19 @@ It focuses on:
 
 ## Business Scenario
 
-The sample domain is order processing.
+The sample domain is order processing with inventory reservation.
 
 When a new order is created, the API stores it in PostgreSQL and publishes an
 `OrderCreated` event to RabbitMQ.
 
-A worker consumes this event asynchronously and processes it.
+The inventory worker reserves stock for the order and publishes either
+`InventoryReserved` or `InventoryReservationFailed`.
+
+The order worker only processes the order after `InventoryReserved`. Once the
+order is processed, the inventory worker deducts the previously reserved
+quantity and publishes `InventoryDeducted`.
+
+The order worker marks the order as fulfilled only after `InventoryDeducted`.
 
 This simple flow is enough to demonstrate real-world messaging concerns such as
 duplicate messages, retries, failures, and observability.
@@ -57,7 +66,7 @@ Client
   v
 Order.Api
   |
-  | Save order
+  | Save order as PendingInventoryReservation
   v
 PostgreSQL
   |
@@ -65,12 +74,40 @@ PostgreSQL
   v
 RabbitMQ
   |
-  | Consume event
+  | Consume OrderCreated
+  v
+Inventory.Worker
+  |
+  | Check idempotency
+  | Reserve inventory
+  | Publish InventoryReserved
+  v
+RabbitMQ
+  |
+  | Consume InventoryReserved
   v
 Order.Worker
   |
-  | Check idempotency
   | Process order
+  | Publish OrderProcessed
+  v
+RabbitMQ
+  |
+  | Consume OrderProcessed
+  v
+Inventory.Worker
+  |
+  | Deduct reserved inventory
+  | Publish InventoryDeducted
+  v
+RabbitMQ
+  |
+  | Consume InventoryDeducted
+  v
+Order.Worker
+  |
+  | Mark order as Fulfilled
+  | Publish OrderFulfilled
   v
 processed_messages
 ```
@@ -80,10 +117,12 @@ processed_messages
 | Project | Description |
 | --- | --- |
 | `src/Order.Api` | HTTP API that receives orders and publishes integration events |
-| `src/Order.Worker` | Background worker that consumes order events |
+| `src/Inventory.Worker` | Background worker that reserves and deducts inventory |
+| `src/Order.Worker` | Background worker that reacts to inventory events and advances order status |
 | `src/Shared` | Shared event and messaging contracts |
+| `tests/Inventory.Worker.Tests` | Unit tests for inventory reservation and deduction behavior |
 | `tests/Order.Api.Tests` | Unit tests for API domain and validation behavior |
-| `tests/Order.Worker.Tests` | Unit tests for worker idempotency behavior |
+| `tests/Order.Worker.Tests` | Unit tests for order workflow and idempotency behavior |
 
 ## Run Locally
 
@@ -99,7 +138,13 @@ Run the API:
 dotnet run --project src/Order.Api
 ```
 
-Run the worker in another terminal:
+Run the inventory worker in another terminal:
+
+```bash
+dotnet run --project src/Inventory.Worker
+```
+
+Run the order worker in another terminal:
 
 ```bash
 dotnet run --project src/Order.Worker

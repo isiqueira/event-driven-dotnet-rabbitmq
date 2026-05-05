@@ -1,13 +1,13 @@
 using System.Text.Json;
+using Inventory.Worker.Messaging;
+using Inventory.Worker.Services;
 using Microsoft.Extensions.Options;
-using Order.Worker.Messaging;
-using Order.Worker.Services;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Shared.Events;
 using Shared.Messaging;
 
-namespace Order.Worker;
+namespace Inventory.Worker;
 
 public sealed class Worker(
     IServiceScopeFactory scopeFactory,
@@ -26,32 +26,22 @@ public sealed class Worker(
         await RabbitMqTopology.DeclareAsync(channel, _options, stoppingToken);
         await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false, cancellationToken: stoppingToken);
 
-        await StartConsumerAsync<InventoryReservedEvent>(
+        await StartConsumerAsync<OrderCreatedEvent>(
             channel,
-            RabbitMqEventRouting.GetEndpoint(_options, InventoryReservedEvent.Name),
+            RabbitMqEventRouting.GetEndpoint(_options, OrderCreatedEvent.Name),
             async (scope, integrationEvent, cancellationToken) =>
             {
-                var handler = scope.ServiceProvider.GetRequiredService<InventoryReservedMessageHandler>();
+                var handler = scope.ServiceProvider.GetRequiredService<OrderCreatedMessageHandler>();
                 await handler.HandleAsync(integrationEvent, cancellationToken);
             },
             stoppingToken);
 
-        await StartConsumerAsync<InventoryReservationFailedEvent>(
+        await StartConsumerAsync<OrderProcessedEvent>(
             channel,
-            RabbitMqEventRouting.GetEndpoint(_options, InventoryReservationFailedEvent.Name),
+            RabbitMqEventRouting.GetEndpoint(_options, OrderProcessedEvent.Name),
             async (scope, integrationEvent, cancellationToken) =>
             {
-                var handler = scope.ServiceProvider.GetRequiredService<InventoryReservationFailedMessageHandler>();
-                await handler.HandleAsync(integrationEvent, cancellationToken);
-            },
-            stoppingToken);
-
-        await StartConsumerAsync<InventoryDeductedEvent>(
-            channel,
-            RabbitMqEventRouting.GetEndpoint(_options, InventoryDeductedEvent.Name),
-            async (scope, integrationEvent, cancellationToken) =>
-            {
-                var handler = scope.ServiceProvider.GetRequiredService<InventoryDeductedMessageHandler>();
+                var handler = scope.ServiceProvider.GetRequiredService<OrderProcessedMessageHandler>();
                 await handler.HandleAsync(integrationEvent, cancellationToken);
             },
             stoppingToken);
@@ -62,7 +52,7 @@ public sealed class Worker(
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Order worker is stopping");
+            logger.LogInformation("Inventory worker is stopping");
         }
     }
 
@@ -84,7 +74,7 @@ public sealed class Worker(
             cancellationToken: cancellationToken);
 
         logger.LogInformation(
-            "Order worker started consuming {EventType} queue {QueueName} with consumer tag {ConsumerTag}",
+            "Inventory worker started consuming {EventType} queue {QueueName} with consumer tag {ConsumerTag}",
             endpoint.EventType,
             endpoint.Queue,
             consumerTag);
