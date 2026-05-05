@@ -1,6 +1,25 @@
 @Order.Api_HostAddress = http://localhost:5282
 
-GET {{Order.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+###
+
+GET {{Order.Api_HostAddress}}/orders
+Accept: appliccation/json
 
 ###
+#@name createNewOrder
+POST {{Order.Api_HostAddress}}/orders
+Content-type: application/json
+{
+  "customerId": "customer-001",
+  "items": [
+    {
+      "sku": "SKU-002",
+      "quantity": 2,
+      "unitPrice": 100.00
+    }
+  ]
+}
+
+###
+GET {{Order.Api_HostAddress}}/orders/{{createNewOrder.response.body.$.id}}
+Accept: application/json

@@ -1,41 +1,52 @@
+using Microsoft.EntityFrameworkCore;
+using Order.Api.Data;
+using Order.Api.Endpoints;
+using Order.Api.Messaging;
+using Order.Api.Middleware;
+using Shared.Messaging;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<OrdersDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("OrdersDb"),
+        npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_orders")
+    )
+);
+
+builder.Services.Configure<RabbitMqOptions>(
+    builder.Configuration.GetSection(RabbitMqOptions.SectionName)
+);
+
+builder.Services.AddSingleton<RabbitMqInitializer>();
+builder.Services.AddSingleton<IOrderEventPublisher, RabbitMqOrderEventPublisher>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapGet("/health", () => Results.Ok(new
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    status = "Healthy",
+    timestamp = DateTimeOffset.UtcNow
+}))
+.WithName("GetHealth")
+.WithTags("Health");
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapOrderEndpoints();
+
+await OrdersDbInitializer.InitializeAsync(app.Services);
+await app.Services.GetRequiredService<RabbitMqInitializer>().InitializeAsync();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public partial class Program;

@@ -1,6 +1,6 @@
 # Event-driven .NET with RabbitMQ
 
-Event-driven architecture sample using .NET 8, RabbitMQ, PostgreSQL, retries, dead-letter queue, idempotency and correlation IDs.
+Event-driven architecture sample using .NET 10, RabbitMQ, PostgreSQL, retries, dead-letter queue, idempotency and correlation IDs.
 
 This repository demonstrates how to build a small but production-inspired backend architecture using asynchronous messaging between an API and a background worker.
 
@@ -10,9 +10,9 @@ The goal of this project is to demonstrate practical event-driven architecture p
 
 It focuses on:
 
-- REST API with .NET 8
-- RabbitMQ message publishing and consuming
-- PostgreSQL persistence
+- REST API with .NET 10
+- RabbitMQ message publishing and consuming with `RabbitMQ.Client`
+- PostgreSQL persistence with EF Core and Npgsql
 - Integration events
 - Correlation IDs
 - Idempotent consumers
@@ -53,4 +53,46 @@ Order.Worker
   | Check idempotency
   | Process order
   v
-ProcessedMessages
+processed_messages
+```
+
+## Run locally
+
+Start infrastructure:
+
+```bash
+docker compose up -d
+```
+
+Run the API:
+
+```bash
+dotnet run --project src/Order.Api
+```
+
+Run the worker in another terminal:
+
+```bash
+dotnet run --project src/Order.Worker
+```
+
+Create an order:
+
+```bash
+curl -X POST http://localhost:5282/orders \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-ID: demo-correlation-001" \
+  -d "{\"customerId\":\"customer-001\",\"items\":[{\"sku\":\"SKU-001\",\"quantity\":2,\"unitPrice\":100.00}]}"
+```
+
+Useful local URLs:
+
+- API Swagger UI: `http://localhost:5282/swagger`
+- RabbitMQ management: `http://localhost:15672` (`app` / `app`)
+
+## Tests
+
+```bash
+dotnet build
+dotnet test
+```
